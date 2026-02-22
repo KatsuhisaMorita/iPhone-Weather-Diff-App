@@ -14,3 +14,7 @@ A Swift application that calculates and displays weather differences (temperatur
 
 ## Fastlane & GitHub Actions
 This project includes a `.github/workflows/ios-build.yml` file to automate builds and deployments.
+
+## Troubleshooting Tips
+- **AppIcon Build Errors**: Ensure the `AppIcon.appiconset` contains an image exactly `1024x1024` pixels.
+- **GitHub Actions Node Modules Error**: If you have a separate Node.js project for API tests, ensure `node_modules/` is added to `.gitignore`. If already accidentally tracked by git, remove it with `git rm -r --cached node_modules/`.
