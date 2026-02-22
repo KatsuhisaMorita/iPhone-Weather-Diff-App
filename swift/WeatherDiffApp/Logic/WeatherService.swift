@@ -15,7 +15,7 @@ class WeatherService: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(location.latitude)&longitude=\(location.longitude)&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=1&forecast_days=2"
+        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(location.latitude)&longitude=\(location.longitude)&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=1&forecast_days=3"
         
         guard let url = URL(string: urlString) else {
             self.errorMessage = "Invalid URL"
@@ -41,7 +41,7 @@ class WeatherService: ObservableObject {
                     let decoder = JSONDecoder()
                     let result = try decoder.decode(WeatherResponse.self, from: data)
                     
-                    guard result.daily.time.count >= 2 else {
+                    guard result.daily.time.count >= 3 else {
                         self?.errorMessage = "Not enough data"
                         return
                     }
@@ -68,7 +68,18 @@ class WeatherService: ObservableObject {
                         isToday: true
                     )
                     
-                    self?.diffData = WeatherDiff(today: today, yesterday: yesterday)
+                    let tomorrow = DailyForecast(
+                        dateString: result.daily.time[2],
+                        maxTemp: result.daily.temperature2mMax[2],
+                        minTemp: result.daily.temperature2mMin[2],
+                        apparentMaxTemp: result.daily.apparentTemperatureMax[2],
+                        apparentMinTemp: result.daily.apparentTemperatureMin[2],
+                        rainProbability: result.daily.precipitationProbabilityMax[2],
+                        weatherCode: result.daily.weatherCode[2],
+                        isToday: false
+                    )
+                    
+                    self?.diffData = WeatherDiff(yesterday: yesterday, today: today, tomorrow: tomorrow)
                     
                 } catch {
                     self?.errorMessage = "Data parsing error: \(error.localizedDescription)"

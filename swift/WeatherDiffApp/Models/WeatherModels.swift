@@ -49,22 +49,19 @@ struct DailyForecast: Identifiable {
 }
 
 struct WeatherDiff {
-    let today: DailyForecast
     let yesterday: DailyForecast
+    let today: DailyForecast
+    let tomorrow: DailyForecast
     
-    var maxTempDiff: Double {
-        today.maxTemp - yesterday.maxTemp
-    }
+    // Today vs Yesterday
+    var todayMaxTempDiff: Double { today.maxTemp - yesterday.maxTemp }
+    var todayMinTempDiff: Double { today.minTemp - yesterday.minTemp }
+    var todayApparentMaxTempDiff: Double { today.apparentMaxTemp - yesterday.apparentMaxTemp }
+    var todayApparentMinTempDiff: Double { today.apparentMinTemp - yesterday.apparentMinTemp }
     
-    var minTempDiff: Double {
-        today.minTemp - yesterday.minTemp
-    }
-    
-    var apparentMaxTempDiff: Double {
-        today.apparentMaxTemp - yesterday.apparentMaxTemp
-    }
-    
-    var apparentMinTempDiff: Double {
-        today.apparentMinTemp - yesterday.apparentMinTemp
-    }
+    // Tomorrow vs Today
+    var tomorrowMaxTempDiff: Double { tomorrow.maxTemp - today.maxTemp }
+    var tomorrowMinTempDiff: Double { tomorrow.minTemp - today.minTemp }
+    var tomorrowApparentMaxTempDiff: Double { tomorrow.apparentMaxTemp - today.apparentMaxTemp }
+    var tomorrowApparentMinTempDiff: Double { tomorrow.apparentMinTemp - today.apparentMinTemp }
 }

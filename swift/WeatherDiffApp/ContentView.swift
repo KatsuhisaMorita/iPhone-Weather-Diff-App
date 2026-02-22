@@ -92,7 +92,7 @@ struct ContentView: View {
     }
     
     private func generateAdvice(diff: WeatherDiff) -> String {
-        let maxDiff = diff.maxTempDiff
+        let maxDiff = diff.todayMaxTempDiff
         let apparentMax = diff.today.apparentMaxTemp
         let rainProb = diff.today.rainProbability
         
@@ -153,30 +153,36 @@ struct ContentView: View {
     }
     
     // Reusable view for table row content
-    private func tableRow(label: String, yesterday: AnyView, today: AnyView, diff: AnyView) -> some View {
+    private func tableRow(label: String, yesterday: AnyView, today: AnyView, todayDiff: AnyView?, tomorrow: AnyView, tomorrowDiff: AnyView?) -> some View {
         HStack {
             Text(label)
-                .font(.footnote)
+                .font(.caption)
                 .foregroundColor(.white.opacity(0.8))
-                .frame(width: 50, alignment: .center)
+                .frame(width: 40, alignment: .leading)
             
             Spacer()
             
             yesterday
-                .frame(width: 80, alignment: .center)
-            
-            Spacer()
-            
-            today
-                .frame(width: 80, alignment: .center)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(12)
-            
-            Spacer()
-            
-            diff
                 .frame(width: 60, alignment: .center)
+            
+            Spacer()
+            
+            VStack(spacing: 2) {
+                today
+                if let diff = todayDiff { diff }
+            }
+            .frame(width: 80, alignment: .center)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(12)
+            
+            Spacer()
+            
+            VStack(spacing: 2) {
+                tomorrow
+                if let diff = tomorrowDiff { diff }
+            }
+            .frame(width: 80, alignment: .center)
         }
         .padding(.vertical, 8)
         .overlay(Divider().background(Color.white.opacity(0.2)), alignment: .bottom)
@@ -193,14 +199,13 @@ struct ContentView: View {
     
     private func tempDiffView(diff: Double) -> AnyView {
         AnyView(
-            Text("\(diff > 0 ? "+" : "")\(String(format: "%.1f", diff))")
-                .font(.subheadline)
+            Text("(\(diff > 0 ? "+" : "")\(String(format: "%.1f", diff)))")
+                .font(.caption)
                 .fontWeight(.bold)
                 .foregroundColor(diff > 0 ? Color(red: 1.0, green: 0.5, blue: 0.5) : Color(red: 0.5, green: 0.8, blue: 1.0))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(8)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .opacity(0.9)
         )
     }
     
@@ -208,13 +213,13 @@ struct ContentView: View {
         VStack(spacing: 0) {
             // Header Row
             HStack {
-                Text("").frame(width: 50)
+                Text("").frame(width: 40)
                 Spacer()
-                Text("昨日").font(.subheadline).foregroundColor(.white.opacity(0.8)).frame(width: 80)
+                Text("昨日").font(.caption).foregroundColor(.white.opacity(0.8)).frame(width: 60)
                 Spacer()
-                Text("今日").font(.subheadline).foregroundColor(.white.opacity(0.8)).frame(width: 80)
+                Text("今日").font(.caption).foregroundColor(.white.opacity(0.8)).frame(width: 80)
                 Spacer()
-                Text("差分").font(.subheadline).foregroundColor(.white.opacity(0.8)).frame(width: 60)
+                Text("明日").font(.caption).foregroundColor(.white.opacity(0.8)).frame(width: 80)
             }
             .padding(.bottom, 8)
             .padding(.horizontal, 8)
@@ -222,9 +227,11 @@ struct ContentView: View {
             // Weather Icon Row
             tableRow(
                 label: "天気",
-                yesterday: AnyView(weatherIcon(for: diff.yesterday.weatherCode).font(.title).foregroundColor(.white).shadow(radius: 2)),
-                today: AnyView(weatherIcon(for: diff.today.weatherCode).font(.title).foregroundColor(.white).shadow(radius: 2)),
-                diff: AnyView(Text("-").foregroundColor(.white.opacity(0.6)))
+                yesterday: AnyView(weatherIcon(for: diff.yesterday.weatherCode).font(.title2).foregroundColor(.white).shadow(radius: 2)),
+                today: AnyView(weatherIcon(for: diff.today.weatherCode).font(.title2).foregroundColor(.white).shadow(radius: 2)),
+                todayDiff: nil,
+                tomorrow: AnyView(weatherIcon(for: diff.tomorrow.weatherCode).font(.title2).foregroundColor(.white).shadow(radius: 2)),
+                tomorrowDiff: nil
             )
             .padding(.horizontal, 8)
             
@@ -233,7 +240,9 @@ struct ContentView: View {
                 label: "最高\n気温",
                 yesterday: tempView(value: diff.yesterday.maxTemp, color: Color(red: 1.0, green: 0.6, blue: 0.6)),
                 today: tempView(value: diff.today.maxTemp, color: Color(red: 1.0, green: 0.6, blue: 0.6)),
-                diff: tempDiffView(diff: diff.maxTempDiff)
+                todayDiff: tempDiffView(diff: diff.todayMaxTempDiff),
+                tomorrow: tempView(value: diff.tomorrow.maxTemp, color: Color(red: 1.0, green: 0.6, blue: 0.6)),
+                tomorrowDiff: tempDiffView(diff: diff.tomorrowMaxTempDiff)
             )
             .padding(.horizontal, 8)
             
@@ -242,16 +251,20 @@ struct ContentView: View {
                 label: "最低\n気温",
                 yesterday: tempView(value: diff.yesterday.minTemp, color: Color(red: 0.6, green: 0.8, blue: 1.0)),
                 today: tempView(value: diff.today.minTemp, color: Color(red: 0.6, green: 0.8, blue: 1.0)),
-                diff: tempDiffView(diff: diff.minTempDiff)
+                todayDiff: tempDiffView(diff: diff.todayMinTempDiff),
+                tomorrow: tempView(value: diff.tomorrow.minTemp, color: Color(red: 0.6, green: 0.8, blue: 1.0)),
+                tomorrowDiff: tempDiffView(diff: diff.tomorrowMinTempDiff)
             )
             .padding(.horizontal, 8)
             
             // Rain Prob Row
             tableRow(
                 label: "降水\n確率",
-                yesterday: AnyView(Text("\(diff.yesterday.rainProbability)%").fontWeight(.bold).foregroundColor(Color(red: 0.6, green: 0.9, blue: 1.0))),
-                today: AnyView(Text("\(diff.today.rainProbability)%").fontWeight(.bold).foregroundColor(Color(red: 0.6, green: 0.9, blue: 1.0))),
-                diff: AnyView(Text("-").foregroundColor(.white.opacity(0.6)))
+                yesterday: AnyView(Text("\(diff.yesterday.rainProbability)%").font(.subheadline).fontWeight(.bold).foregroundColor(Color(red: 0.6, green: 0.9, blue: 1.0))),
+                today: AnyView(Text("\(diff.today.rainProbability)%").font(.subheadline).fontWeight(.bold).foregroundColor(Color(red: 0.6, green: 0.9, blue: 1.0))),
+                todayDiff: nil,
+                tomorrow: AnyView(Text("\(diff.tomorrow.rainProbability)%").font(.subheadline).fontWeight(.bold).foregroundColor(Color(red: 0.6, green: 0.9, blue: 1.0))),
+                tomorrowDiff: nil
             )
             .padding(.horizontal, 8)
         }
@@ -270,13 +283,13 @@ struct ContentView: View {
             
             // Header Row
             HStack {
-                Text("").frame(width: 50)
+                Text("").frame(width: 40)
                 Spacer()
-                Text("昨日").font(.subheadline).foregroundColor(.white.opacity(0.8)).frame(width: 80)
+                Text("昨日").font(.caption).foregroundColor(.white.opacity(0.8)).frame(width: 60)
                 Spacer()
-                Text("今日").font(.subheadline).foregroundColor(.white.opacity(0.8)).frame(width: 80)
+                Text("今日").font(.caption).foregroundColor(.white.opacity(0.8)).frame(width: 80)
                 Spacer()
-                Text("差分").font(.subheadline).foregroundColor(.white.opacity(0.8)).frame(width: 60)
+                Text("明日").font(.caption).foregroundColor(.white.opacity(0.8)).frame(width: 80)
             }
             .padding(.bottom, 8)
             .padding(.horizontal, 8)
@@ -286,7 +299,9 @@ struct ContentView: View {
                 label: "体感\n最高",
                 yesterday: tempView(value: diff.yesterday.apparentMaxTemp, color: Color(red: 1.0, green: 0.6, blue: 0.6)),
                 today: tempView(value: diff.today.apparentMaxTemp, color: Color(red: 1.0, green: 0.6, blue: 0.6)),
-                diff: tempDiffView(diff: diff.apparentMaxTempDiff)
+                todayDiff: tempDiffView(diff: diff.todayApparentMaxTempDiff),
+                tomorrow: tempView(value: diff.tomorrow.apparentMaxTemp, color: Color(red: 1.0, green: 0.6, blue: 0.6)),
+                tomorrowDiff: tempDiffView(diff: diff.tomorrowApparentMaxTempDiff)
             )
             .padding(.horizontal, 8)
             
@@ -295,7 +310,9 @@ struct ContentView: View {
                 label: "体感\n最低",
                 yesterday: tempView(value: diff.yesterday.apparentMinTemp, color: Color(red: 0.6, green: 0.8, blue: 1.0)),
                 today: tempView(value: diff.today.apparentMinTemp, color: Color(red: 0.6, green: 0.8, blue: 1.0)),
-                diff: tempDiffView(diff: diff.apparentMinTempDiff)
+                todayDiff: tempDiffView(diff: diff.todayApparentMinTempDiff),
+                tomorrow: tempView(value: diff.tomorrow.apparentMinTemp, color: Color(red: 0.6, green: 0.8, blue: 1.0)),
+                tomorrowDiff: tempDiffView(diff: diff.tomorrowApparentMinTempDiff)
             )
             .padding(.horizontal, 8)
         }

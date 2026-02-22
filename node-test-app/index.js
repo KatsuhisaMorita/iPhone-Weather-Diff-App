@@ -11,7 +11,7 @@ const locations = [
 
 async function fetchWeather(lat, lon) {
   return new Promise((resolve, reject) => {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=1&forecast_days=2`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=1&forecast_days=3`;
     
     https.get(url, (res) => {
       let data = '';
@@ -94,17 +94,34 @@ const server = http.createServer(async (req, res) => {
         icon: getWeatherIcon(daily.weather_code[1])
       };
       
-      const diff = {
+      const tomorrow = {
+        date: daily.time[2],
+        maxTemp: daily.temperature_2m_max[2],
+        minTemp: daily.temperature_2m_min[2],
+        maxApp: daily.apparent_temperature_max[2],
+        minApp: daily.apparent_temperature_min[2],
+        rainPrep: daily.precipitation_probability_max[2],
+        icon: getWeatherIcon(daily.weather_code[2])
+      };
+      
+      const diffYesterday = {
         maxTempDiff: +(today.maxTemp - yesterday.maxTemp).toFixed(1),
         minTempDiff: +(today.minTemp - yesterday.minTemp).toFixed(1),
         maxAppDiff: +(today.maxApp - yesterday.maxApp).toFixed(1),
         minAppDiff: +(today.minApp - yesterday.minApp).toFixed(1)
       };
 
-      const advice = getAdvice(diff.maxTempDiff, diff.minTempDiff, today.maxApp, today.rainPrep);
+      const diffTomorrow = {
+        maxTempDiff: +(tomorrow.maxTemp - today.maxTemp).toFixed(1),
+        minTempDiff: +(tomorrow.minTemp - today.minTemp).toFixed(1),
+        maxAppDiff: +(tomorrow.maxApp - today.maxApp).toFixed(1),
+        minAppDiff: +(tomorrow.minApp - today.minApp).toFixed(1)
+      };
+
+      const advice = getAdvice(diffYesterday.maxTempDiff, diffYesterday.minTempDiff, today.maxApp, today.rainPrep);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ location: loc.name, yesterday, today, diff, advice }));
+      res.end(JSON.stringify({ location: loc.name, yesterday, today, tomorrow, diffYesterday, diffTomorrow, advice }));
     } catch (e) {
       res.writeHead(500);
       res.end(JSON.stringify({ error: e.message }));
@@ -219,13 +236,10 @@ const server = http.createServer(async (req, res) => {
           display: block;
         }
         .temp-diff {
-          font-size: 1.1rem;
-          font-weight: bold;
-          margin-top: 5px;
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 8px;
-          background: rgba(0,0,0,0.3);
+          font-size: 0.9rem;
+          margin-top: 2px;
+          display: block;
+          opacity: 0.9;
         }
         
         .positive { color: #ff8b94; }
@@ -265,7 +279,7 @@ const server = http.createServer(async (req, res) => {
                   <th></th>
                   <th>昨日</th>
                   <th>今日</th>
-                  <th>差分</th>
+                  <th>明日</th>
                 </tr>
               </thead>
               <tbody>
@@ -273,25 +287,37 @@ const server = http.createServer(async (req, res) => {
                   <td><span class="temp-label">天気</span></td>
                   <td><span class="row-icon" id="icon1">☁️</span></td>
                   <td class="highlight-today"><span class="row-icon" id="icon2">☁️</span></td>
-                  <td>-</td>
+                  <td><span class="row-icon" id="icon3">☁️</span></td>
                 </tr>
                 <tr>
                   <td><span class="temp-label">最高<br>気温</span></td>
                   <td><span class="temp-val max-color" id="max1">--°</span></td>
-                  <td class="highlight-today"><span class="temp-val max-color" id="max2">--°</span></td>
-                  <td><span class="temp-diff" id="maxDiff">--</span></td>
+                  <td class="highlight-today">
+                    <span class="temp-val max-color" id="max2">--°</span>
+                    <span class="temp-diff" id="maxDiff1">(--)</span>
+                  </td>
+                  <td>
+                    <span class="temp-val max-color" id="max3">--°</span>
+                    <span class="temp-diff" id="maxDiff2">(--)</span>
+                  </td>
                 </tr>
                 <tr>
                   <td><span class="temp-label">最低<br>気温</span></td>
                   <td><span class="temp-val min-color" id="min1">--°</span></td>
-                  <td class="highlight-today"><span class="temp-val min-color" id="min2">--°</span></td>
-                  <td><span class="temp-diff" id="minDiff">--</span></td>
+                  <td class="highlight-today">
+                    <span class="temp-val min-color" id="min2">--°</span>
+                    <span class="temp-diff" id="minDiff1">(--)</span>
+                  </td>
+                  <td>
+                    <span class="temp-val min-color" id="min3">--°</span>
+                    <span class="temp-diff" id="minDiff2">(--)</span>
+                  </td>
                 </tr>
                 <tr>
                   <td><span class="temp-label">降水<br>確率</span></td>
                   <td><span class="rain-color" id="rain1">--%</span></td>
                   <td class="highlight-today"><span class="rain-color" id="rain2">--%</span></td>
-                  <td>-</td>
+                  <td><span class="rain-color" id="rain3">--%</span></td>
                 </tr>
               </tbody>
             </table>
@@ -305,21 +331,33 @@ const server = http.createServer(async (req, res) => {
                   <th></th>
                   <th>昨日</th>
                   <th>今日</th>
-                  <th>差分</th>
+                  <th>明日</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td><span class="temp-label">体感<br>最高</span></td>
                   <td><span class="temp-val max-color" id="appMax1" style="font-size:1.3rem;">--°</span></td>
-                  <td class="highlight-today"><span class="temp-val max-color" id="appMax2" style="font-size:1.3rem;">--°</span></td>
-                  <td><span class="temp-diff" id="appMaxDiff">--</span></td>
+                  <td class="highlight-today">
+                    <span class="temp-val max-color" id="appMax2" style="font-size:1.3rem;">--°</span>
+                    <span class="temp-diff" id="appMaxDiff1">(--)</span>
+                  </td>
+                  <td>
+                    <span class="temp-val max-color" id="appMax3" style="font-size:1.3rem;">--°</span>
+                    <span class="temp-diff" id="appMaxDiff2">(--)</span>
+                  </td>
                 </tr>
                 <tr>
                   <td><span class="temp-label">体感<br>最低</span></td>
                   <td><span class="temp-val min-color" id="appMin1" style="font-size:1.3rem;">--°</span></td>
-                  <td class="highlight-today"><span class="temp-val min-color" id="appMin2" style="font-size:1.3rem;">--°</span></td>
-                  <td><span class="temp-diff" id="appMinDiff">--</span></td>
+                  <td class="highlight-today">
+                    <span class="temp-val min-color" id="appMin2" style="font-size:1.3rem;">--°</span>
+                    <span class="temp-diff" id="appMinDiff1">(--)</span>
+                  </td>
+                  <td>
+                    <span class="temp-val min-color" id="appMin3" style="font-size:1.3rem;">--°</span>
+                    <span class="temp-diff" id="appMinDiff2">(--)</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -332,7 +370,7 @@ const server = http.createServer(async (req, res) => {
         function formatDiff(val) {
           const sign = val > 0 ? '+' : '';
           const className = val > 0 ? 'positive' : val < 0 ? 'negative' : '';
-          return \`<span class="\${className}">\${sign}\${val}°</span>\`;
+          return \`(<span class="\${className}">\${sign}\${val}°</span>)\`;
         }
         
         async function fetchData() {
@@ -348,11 +386,17 @@ const server = http.createServer(async (req, res) => {
             // Advice
             document.getElementById('adviceDetail').innerText = data.advice;
             
-            // Diffs
-            document.getElementById('maxDiff').innerHTML = formatDiff(data.diff.maxTempDiff);
-            document.getElementById('minDiff').innerHTML = formatDiff(data.diff.minTempDiff);
-            document.getElementById('appMaxDiff').innerHTML = formatDiff(data.diff.maxAppDiff);
-            document.getElementById('appMinDiff').innerHTML = formatDiff(data.diff.minAppDiff);
+            // Diffs Today (vs Yesterday)
+            document.getElementById('maxDiff1').innerHTML = formatDiff(data.diffYesterday.maxTempDiff);
+            document.getElementById('minDiff1').innerHTML = formatDiff(data.diffYesterday.minTempDiff);
+            document.getElementById('appMaxDiff1').innerHTML = formatDiff(data.diffYesterday.maxAppDiff);
+            document.getElementById('appMinDiff1').innerHTML = formatDiff(data.diffYesterday.minAppDiff);
+            
+            // Diffs Tomorrow (vs Today)
+            document.getElementById('maxDiff2').innerHTML = formatDiff(data.diffTomorrow.maxTempDiff);
+            document.getElementById('minDiff2').innerHTML = formatDiff(data.diffTomorrow.minTempDiff);
+            document.getElementById('appMaxDiff2').innerHTML = formatDiff(data.diffTomorrow.maxAppDiff);
+            document.getElementById('appMinDiff2').innerHTML = formatDiff(data.diffTomorrow.minAppDiff);
             
             // Yesterday
             document.getElementById('icon1').innerText = data.yesterday.icon;
@@ -369,6 +413,14 @@ const server = http.createServer(async (req, res) => {
             document.getElementById('rain2').innerText = data.today.rainPrep + '%';
             document.getElementById('appMax2').innerText = data.today.maxApp + '°';
             document.getElementById('appMin2').innerText = data.today.minApp + '°';
+            
+            // Tomorrow
+            document.getElementById('icon3').innerText = data.tomorrow.icon;
+            document.getElementById('max3').innerText = data.tomorrow.maxTemp + '°';
+            document.getElementById('min3').innerText = data.tomorrow.minTemp + '°';
+            document.getElementById('rain3').innerText = data.tomorrow.rainPrep + '%';
+            document.getElementById('appMax3').innerText = data.tomorrow.maxApp + '°';
+            document.getElementById('appMin3').innerText = data.tomorrow.minApp + '°';
             
             document.getElementById('content').style.display = 'block';
           } catch (e) {
