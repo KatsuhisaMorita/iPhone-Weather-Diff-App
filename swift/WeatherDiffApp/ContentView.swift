@@ -9,7 +9,7 @@ struct ContentView: View {
             ZStack {
                 // Background Gradient
                 LinearGradient(
-                    gradient: Gradient(colors: [Color("TopGradient", default: Color.blue.opacity(0.8)), Color("BottomGradient", default: Color.black)]),
+                    gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.black]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ).ignoresSafeArea()
